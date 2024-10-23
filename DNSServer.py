@@ -75,6 +75,25 @@ dns_records = {
             86400, #minimum
         ),
     },
+    'safebank.com.': {
+        dns.rdatatype.A: '192.168.1.102'
+    },
+    'google.com.': {
+        dns.rdatatype.A: '192.168.1.103'
+    },
+    'legitsite.com.': {
+        dns.rdatatype.A: '192.168.1.104'
+    },
+    'yahoo.com.': {
+        dns.rdatatype.A: '192.168.1.105'
+    },
+    'nyu.edu.': {
+        dns.rdatatype.A: '192.168.1.106',
+        dns.rdatatype.TXT: (encrypt_with_aes('AlwaysWatching', password, salt).decode('utf-8'),),
+        dns.rdatatype.MX: [(10, 'mxa-00256a01.gslb.pphosted.com.')],
+        dns.rdatatype.AAAA: '2001:0db8:85a3:0000:0000:8a2e:0373:7312',
+        dns.rdatatype.NS: 'ns1.nyu.edu.'
+    }
    
     # Add more records as needed (see assignment instructions!
 }
@@ -105,13 +124,21 @@ def run_dns_server():
 
                 rdata_list = []
 
-                if qtype == dns.rdatatype.MX:
+                if qtype == dns.rdatatype.MX: # For MX records
                     for pref, server in answer_data:
                         rdata_list.append(MX(dns.rdataclass.IN, dns.rdatatype.MX, pref, server))
-                elif qtype == dns.rdatatype.SOA:
+                elif qtype == dns.rdatatype.SOA: # For SOA records
                     mname, rname, serial, refresh, retry, expire, minimum = answer_data # What is the record format? See dns_records dictionary. Assume we handle @, Class, TTL elsewhere. Do some research on SOA Records
                     rdata = SOA(dns.rdataclass.IN, dns.rdatatype.SOA, mname, rname, serial, refresh, retry, expire, minimum) # follow format from previous line
                     rdata_list.append(rdata)
+                elif qtype == dns.rdatatype.A: # For A (IPv4) records
+                    rdata_list.append(dns.rdata.from_text(dns.rdataclass.IN, dns.rdatatype.A, answer_data))
+                elif qtype == dns.rdatatype.AAAA: # For AAAA (IPv6) records
+                    rdata_list.append(dns.rdata.from_text(dns.rdataclass.IN, dns.rdatatype.AAAA, answer_data))
+                elif qtype == dns.rdatatype.NS: # For NS records
+                    rdata_list.append(dns.rdata.from_text(dns.rdataclass.IN, dns.rdatatype.NS, answer_data))
+                elif qtype == dns.rdatatype.TXT: # For TXT records
+                    rdata_list.append(dns.rdata.from_text(dns.rdataclass.IN, dns.rdatatype.TXT, f'"{answer_data[0]}"'))
                 else:
                     if isinstance(answer_data, str):
                         rdata_list = [dns.rdata.from_text(dns.rdataclass.IN, qtype, answer_data)]
